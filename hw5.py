@@ -1,7 +1,6 @@
 import argparse
 from datetime import datetime, timedelta
 import asyncio
-
 import aiohttp
 
 
@@ -19,9 +18,9 @@ async def request(url: str):
                     print(f"Error status: {response.status} for {url}")
         except aiohttp.ClientConnectorError as err:
             print(f'Connection error: {url}', str(err))
+               
 
 async def get_exchange_rates_on_date(date):
-    
     exchange_rates = await request(API_URL + date)
     if exchange_rates:
         euro = list(filter(lambda er: er["currency"] == "EUR", exchange_rates))[0]
@@ -43,25 +42,27 @@ async def get_exchange_rates_on_date(date):
 
 
 async def get_exchange_rates(days):
-    exchange_rates = []
-
+    tasks = []
     for i in range(days):
         date = (datetime.today() - timedelta(days=i)).strftime("%d.%m.%Y")
-        exchange_rate = await get_exchange_rates_on_date(date)
-        exchange_rates.append(exchange_rate)
-
+        tasks.append(get_exchange_rates_on_date(date))
+    
+    exchange_rates = await asyncio.gather(*tasks)
     return exchange_rates
 
 
 async def main(days):
     exchange_rates = await get_exchange_rates(days)
     for exchange_rate in exchange_rates:
-        for date, rates in exchange_rate.items():
-            print(f"{date}:")
-            for currency, values in rates.items():
-                print(f"    {currency}:")
-                for key, value in values.items():
-                    print(f"        {key}: {value}")
+        if isinstance(exchange_rate, dict):
+            for date, rates in exchange_rate.items():
+                print(f"{date}:")
+                for currency, values in rates.items():
+                    print(f"    {currency}:")
+                    for key, value in values.items():
+                        print(f"        {key}: {value}")
+        else:
+            print(exchange_rate)
 
 
 if __name__ == "__main__":
@@ -75,3 +76,4 @@ if __name__ == "__main__":
         print("Maximum value for days is 10.")
     else:
         asyncio.run(main(args.days))
+ 
